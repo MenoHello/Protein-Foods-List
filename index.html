@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Foods List from Google Sheets</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      line-height: 1.5;
+      background-color: #ffe9e5; /* Website background */
+    }
+    .category-section {
+      margin-bottom: 40px;
+    }
+    .category-header {
+      font-size: 1.5em;
+      font-weight: bold;
+      margin-bottom: 20px;
+      color: #333;
+      border-bottom: 2px solid #ffa798; /* Website accent */
+      padding-bottom: 5px;
+      background-color: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(255, 167, 152, 0.1);
+    }
+    .food-grid {
+      display: flex;
+      gap: 40px;
+      max-width: 800px;
+    }
+    .column {
+      flex: 1;
+    }
+    .item {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px dotted #aaa;
+      padding: 4px 0;
+    }
+    .food {
+      margin-right: 10px;
+      white-space: nowrap;
+    }
+    .food-name {
+      font-weight: bold;
+    }
+    .food-description {
+      font-weight: normal;
+    }
+    .grams {
+      margin-left: 10px;
+      white-space: nowrap;
+    }
+    .loading {
+      text-align: center;
+      color: #666;
+      font-style: italic;
+    }
+    .error {
+      color: #d32f2f;
+      background-color: #ffebee;
+      border: 1px solid #f8bbd9;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="content">
+    <div class="loading">Loading data from Google Sheets...</div>
+  </div>
+
+  <script>
+    const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSP_qig4NNi8vzTu9itx8AGeM1JkvYpPj5_UyPiAdo4PYaTrPiOd4ep75_pjenQSx25Pyd5gGJjycK4/pub?gid=0&single=true&output=csv';
+
+    function parseCSV(text) {
+      // More robust CSV parsing
+      const result = [];
+      const lines = text.split(/\r?\n/); // Handle both \n and \r\n line endings
+      
+      console.log('Total lines found:', lines.length);
+      console.log('First few lines:', lines.slice(0, 5));
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line || line.trim() === '') continue;
+        
+        const row = [];
+        let current = '';
+        let inQuotes = false;
+        let j = 0;
+        
+        while (j < line.length) {
+          const char = line[j];
+          
+          if (char === '"') {
+            if (inQuotes && j + 1 < line.length && line[j + 1] === '"') {
+              // Handle escaped quotes
+              current += '"';
+              j += 2;
+            } else {
+              inQuotes = !inQuotes;
+              j++;
+            }
+          } else if (char === ',' && !inQuotes) {
+            row.push(current.replace(/^"|"$/g, '').trim()); // Remove surrounding quotes
+            current = '';
+            j++;
+          } else {
+            current += char;
+            j++;
+          }
+        }
+        
+        // Add the last field
+        row.push(current.replace(/^"|"$/g, '').trim());
+        
+        if (row.some(cell => cell !== '')) { // Only add non-empty rows
+          result.push(row);
+        }
+      }
+      
+      console.log('Parsed data:', result);
+      return result;
+    }
+
+    function groupByCategory(data) {
+      const grouped = {};
+      
+      console.log('Grouping data. Total rows:', data.length);
+      
+      // Skip header row (index 0) if it exists
+      const startIndex = data.length > 0 && (data[0][0] === 'Category' || data[0][0] === 'category') ? 1 : 0;
+      
+      for (let i = startIndex; i < data.length; i++) {
+        const row = data[i];
+        console.log(`Row ${i}:`, row);
+        
+        const category = row[0] || '';
+        const item = row[1] || '';
+        const description = row[2] || '';
+        const amount = row[3] || '';
+        const grams = row[4] || '';
+        
+        // Skip rows without essential data
+        if (!category.trim() || !item.trim()) {
+          console.log(`Skipping row ${i}: missing category or item`);
+          continue;
+        }
+        
+        if (!grouped[category]) {
+          grouped[category] = [];
+        }
+        
+        grouped[category].push({
+          item: item.trim(),
+          description: description.trim(),
+          amount: amount.trim(),
+          grams: grams.trim()
+        });
+      }
+      
+      // Alphabetize items within each category
+      for (const category in grouped) {
+        grouped[category].sort((a, b) => a.item.localeCompare(b.item));
+      }
+      
+      console.log('Grouped data:', grouped);
+      return grouped;
+    }
+
+    function createHTML(groupedData) {
+      let html = '';
+      
+      for (const [category, items] of Object.entries(groupedData)) {
+        html += `<div class="category-section">`;
+        html += `<div class="category-header">${category}</div>`;
+        html += `<div class="food-grid">`;
+        
+        // Calculate how to split items for magazine-style layout
+        const totalItems = items.length;
+        const itemsPerColumn = Math.ceil(totalItems / 2);
+        
+        // Create left column
+        html += `<div class="column">`;
+        for (let i = 0; i < itemsPerColumn; i++) {
+          if (items[i]) {
+            const item = items[i];
+            const leftSide = `<span class="food-name">${item.item}</span>${item.description ? ` <span class="food-description">${item.description}</span>` : ''}${item.amount ? ` - ${item.amount}` : ''}`;
+            const rightSide = `${item.grams || '0'} g`;
+            
+            html += `<div class="item">`;
+            html += `<span class="food">${leftSide}</span>`;
+            html += `<span class="grams">${rightSide}</span>`;
+            html += `</div>`;
+          }
+        }
+        html += `</div>`;
+        
+        // Create right column
+        html += `<div class="column">`;
+        for (let i = itemsPerColumn; i < totalItems; i++) {
+          if (items[i]) {
+            const item = items[i];
+            const leftSide = `<span class="food-name">${item.item}</span>${item.description ? ` <span class="food-description">${item.description}</span>` : ''}${item.amount ? ` - ${item.amount}` : ''}`;
+            const rightSide = `${item.grams || '0'} g`;
+            
+            html += `<div class="item">`;
+            html += `<span class="food">${leftSide}</span>`;
+            html += `<span class="grams">${rightSide}</span>`;
+            html += `</div>`;
+          }
+        }
+        html += `</div>`;
+        
+        html += `</div>`;
+        html += `</div>`;
+      }
+      
+      return html;
+    }
+
+    async function loadData() {
+      try {
+        const response = await fetch(CSV_URL);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const text = await response.text();
+        const data = parseCSV(text);
+        const groupedData = groupByCategory(data);
+        
+        const contentDiv = document.getElementById('content');
+        
+        if (Object.keys(groupedData).length === 0) {
+          contentDiv.innerHTML = '<div class="error">No valid data found in the spreadsheet.</div>';
+          return;
+        }
+        
+        contentDiv.innerHTML = createHTML(groupedData);
+        
+        // Add note at the bottom
+        const noteHTML = `
+          <div class="note">
+            The amount of protein in each food listed above is an average. Protein content of foods may vary slightly depending on manufacturer.
+            In general, 2 Tablespoons (Tbsp) or a portion of poultry, beef, pork, or fish the size of 1/3 of a deck of cards would equal 1 ounce (oz) and provide about 7 grams of protein. 
+            A whole deck of cards would equal 3 ounces and provide about 21 grams of protein.
+          </div>
+        `;
+        contentDiv.innerHTML += noteHTML;
+        
+      } catch (error) {
+        console.error('Error loading data:', error);
+        const contentDiv = document.getElementById('content');
+        contentDiv.innerHTML = `
+          <div class="error">
+            <strong>Error loading data:</strong> ${error.message}<br>
+            Please check that your Google Sheets link is publicly accessible and the format is correct.
+          </div>
+        `;
+      }
+    }
+
+    // Load data when page loads
+    loadData();
+  </script>
+</body>
+</html>
