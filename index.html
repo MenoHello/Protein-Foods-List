@@ -34,6 +34,52 @@
     .column {
       flex: 1;
     }
+    
+    /* Mobile responsive design */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+      
+      .food-grid {
+        flex-direction: column;
+        gap: 0;
+        max-width: 100%;
+      }
+      
+      .column {
+        width: 100%;
+      }
+      
+      .item {
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+      
+      .food {
+        margin-right: 5px;
+        white-space: normal;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+      }
+      
+      .grams {
+        margin-left: 5px;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      
+      .category-header {
+        font-size: 1.3em;
+        padding: 10px;
+        margin-bottom: 15px;
+      }
+      
+      .note {
+        padding: 10px;
+        margin-top: 20px;
+      }
+    }
     .item {
       display: flex;
       justify-content: space-between;
@@ -70,7 +116,7 @@
   </style>
 </head>
 <body>
-<div id="Protein-Foods-ListContainer">
+
   <div id="content">
     <div class="loading">Loading data from Google Sheets...</div>
   </div>
@@ -256,6 +302,9 @@
         `;
         contentDiv.innerHTML += noteHTML;
         
+        // Send height to parent frame after content loads
+        sendIframeHeight();
+        
       } catch (error) {
         console.error('Error loading data:', error);
         const contentDiv = document.getElementById('content');
@@ -270,16 +319,16 @@
 
     // Load data when page loads
     loadData();
-  </script>
-  </div>
-<script>
+    
     function sendIframeHeight() {
         const contentContainer = document.getElementById('Protein-Foods-ListContainer');
         if (contentContainer) {
             const height = contentContainer.scrollHeight + 50; // extra buffer to avoid scrollbar
             window.parent.postMessage({ type: 'setIframeHeight', height: height }, 'https://www.menohello.com');
+            console.log('Sending height to parent:', height);
         }
     }
+    
     window.addEventListener('DOMContentLoaded', sendIframeHeight);
     window.addEventListener('load', sendIframeHeight);
     const containerToObserve = document.getElementById('Protein-Foods-ListContainer'); 
@@ -287,7 +336,6 @@
         const resizeObserver = new ResizeObserver(sendIframeHeight);
         resizeObserver.observe(containerToObserve);
     }
-</script>
-
+  </script>
 </body>
 </html>
