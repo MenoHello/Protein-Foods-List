@@ -70,7 +70,7 @@
   </style>
 </head>
 <body>
-
+<div id="Protein-Foods-ListContainer">
   <div id="content">
     <div class="loading">Loading data from Google Sheets...</div>
   </div>
@@ -271,5 +271,23 @@
     // Load data when page loads
     loadData();
   </script>
+  </div>
+<script>
+    function sendIframeHeight() {
+        const contentContainer = document.getElementById('Protein-Foods-ListContainer');
+        if (contentContainer) {
+            const height = contentContainer.scrollHeight + 50; // extra buffer to avoid scrollbar
+            window.parent.postMessage({ type: 'setIframeHeight', height: height }, 'https://www.menohello.com');
+        }
+    }
+    window.addEventListener('DOMContentLoaded', sendIframeHeight);
+    window.addEventListener('load', sendIframeHeight);
+    const containerToObserve = document.getElementById('Protein-Foods-ListContainer'); 
+    if (containerToObserve) {
+        const resizeObserver = new ResizeObserver(sendIframeHeight);
+        resizeObserver.observe(containerToObserve);
+    }
+</script>
+
 </body>
 </html>
