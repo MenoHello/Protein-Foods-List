@@ -273,20 +273,34 @@
   </script>
   </div>
 <script>
-    function sendIframeHeight() {
-        const contentContainer = document.getElementById('Protein-Foods-ListContainer');
-        if (contentContainer) {
-            const height = contentContainer.scrollHeight + 50; // extra buffer to avoid scrollbar
-            window.parent.postMessage({ type: 'setIframeHeight', height: height }, 'https://www.menohello.com');
+        // Use a function to send the height message
+        function sendIframeHeight() {
+            const contentContainer = document.getElementById('Protein-Foods-ListContainer');
+            if (contentContainer) {
+                // Get the height, including padding and border, and add a buffer
+                const height = contentContainer.scrollHeight + 50; 
+                // IMPORTANT: The target origin MUST be your Pixpa site's exact domain.
+                // Replace 'https://www.your-pixpa-domain.com' with your actual domain.
+                window.parent.postMessage({ type: 'setIframeHeight', height: height }, 'https://www.menohello.com');
+                console.log('GitHub Page: Sent message to parent. Height:', height);
+            }
         }
-    }
-    window.addEventListener('DOMContentLoaded', sendIframeHeight);
-    window.addEventListener('load', sendIframeHeight);
-    const containerToObserve = document.getElementById('Protein-Foods-ListContainer'); 
-    if (containerToObserve) {
-        const resizeObserver = new ResizeObserver(sendIframeHeight);
-        resizeObserver.observe(containerToObserve);
-    }
-</script>
+
+        // Wait for the data to be fully loaded and rendered before sending the height
+        async function loadAndResize() {
+            await loadData(); // Your existing function to load data
+            sendIframeHeight();
+
+            // Observe the container for content changes after initial load
+            const containerToObserve = document.getElementById('Protein-Foods-ListContainer'); 
+            if (containerToObserve) {
+                const resizeObserver = new ResizeObserver(sendIframeHeight);
+                resizeObserver.observe(containerToObserve);
+            }
+        }
+        
+        // Call the new combined function to start the process
+        loadAndResize();
+    </script>
 </body>
 </html>
